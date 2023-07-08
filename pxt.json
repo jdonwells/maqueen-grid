@@ -1,5 +1,5 @@
 {
-    "name": "Maqueen Grid",
+    "name": "Maqueen Maze",
     "description": "",
     "dependencies": {
         "core": "*",
