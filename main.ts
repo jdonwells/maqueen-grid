@@ -13,24 +13,6 @@ function show_line_sensors () {
 function on_crossroad () {
     return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorL1) == ON && maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorR1) == ON
 }
-function initialize_test_turns () {
-    test_turns = [
-    STRAIGHT,
-    RIGHT,
-    RIGHT,
-    STRAIGHT,
-    RIGHT,
-    RIGHT
-    ]
-    next_turn = 0
-}
-function center_on_crossroad () {
-    for (let index = 0; index < iterations_to_center_of_line; index++) {
-        drive_mostly_straight()
-        basic.pause(1)
-    }
-    maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
-}
 function make_a_90_degree_turn (direction: number) {
     maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Yellow)
     if (direction >= 0) {
@@ -53,23 +35,56 @@ function stop () {
     go = false
     maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Red)
 }
+function set_implied_walls () {
+    index = 0
+    for (let index2 = 0; index2 < 3; index2++) {
+        add_a_wall(index, 0, NORTH)
+        add_a_wall(index, 4, SOUTH)
+        index += 1
+    }
+    index = 0
+    for (let index2 = 0; index2 < 5; index2++) {
+        add_a_wall(0, index, WEST)
+        add_a_wall(2, index, EAST)
+        index += 1
+    }
+}
+function add_a_wall (x_location: number, y_location: number, wall_direction: number) {
+    walls = map2[x_location][y_location].split("")
+    walls[wall_direction] = WALL
+    map2[x_location][y_location] = "" + walls[NORTH] + walls[EAST] + walls[SOUTH] + walls[WEST]
+}
 input.onButtonPressed(Button.A, function () {
     led.unplot(x, y)
     x = (x + 1) % 3
     led.plot(x, y)
 })
-function set_implied_walls () {
-    for (let column of map) {
-        column[0] = add_wall(column[0], NORTH)
-        column[4] = add_wall(column[4], SOUTH)
+function initialize_test_turns () {
+    test_turns = [
+    STRAIGHT,
+    RIGHT,
+    RIGHT,
+    STRAIGHT,
+    RIGHT,
+    RIGHT
+    ]
+    next_turn = 0
+}
+function center_on_crossroad () {
+    for (let index2 = 0; index2 < iterations_to_center_of_line; index2++) {
+        drive_mostly_straight()
+        basic.pause(1)
     }
-    for (let index = 0; index <= 4; index++) {
-        map[0][index] = add_wall(map[0][index], WEST)
-        map[2][index] = add_wall(map[2][index], EAST)
-    }
+    maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
 }
 function on_line () {
     return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorL1) == ON || (maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorR1) == ON || maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorM) == ON)
+}
+function make_a_turn () {
+    if (test_turns[next_turn] == LEFT || test_turns[next_turn] == RIGHT) {
+        make_a_90_degree_turn(test_turns[next_turn])
+    }
+    next_turn = (next_turn + 1) % test_turns.length
 }
 function initialize_constants () {
     ON = 1
@@ -82,61 +97,12 @@ function initialize_constants () {
     wheel_bias = 1.05
     iterations_to_center_of_line = 66
 }
-function adjust_stop_point (received_message: string) {
-    if (received_message.compare("A") == 0) {
-        iterations_to_center_of_line += 1
-        radio.sendNumber(iterations_to_center_of_line)
-    } else if (received_message.compare("B") == 0) {
-        iterations_to_center_of_line += -1
-        radio.sendNumber(iterations_to_center_of_line)
-    }
-}
-input.onButtonPressed(Button.AB, function () {
-    basic.showString("" + (map[x][y]))
-    led.plot(x, y)
-})
-radio.onReceivedString(function (receivedString) {
-    if (receivedString.compare("C") == 0) {
-        stop()
-    } else if (receivedString.compare("E") == 0) {
-        go = true
-    } else if (receivedString.compare("F") == 0) {
-        make_a_90_degree_turn(LEFT)
-    } else if (receivedString.compare("D") == 0) {
-        make_a_90_degree_turn(RIGHT)
-    } else {
-    	
-    }
-})
-input.onButtonPressed(Button.B, function () {
-    led.unplot(x, y)
-    y = (y + 1) % 5
-    led.plot(x, y)
-})
-function drive_mostly_straight () {
-    maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Green)
-    error = maqueenPlusV2.readLineSensorData(maqueenPlusV2.MyEnumLineSensor.SensorL1) - maqueenPlusV2.readLineSensorData(maqueenPlusV2.MyEnumLineSensor.SensorR1)
-    wheel_delta = error * Kp
-    if (Math.abs(wheel_delta) < wheel_speed) {
-        maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Forward, (wheel_speed + wheel_delta) * wheel_bias)
-        maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Forward, wheel_speed - wheel_delta)
-    } else {
-        maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Yellow)
-        if (wheel_delta > 0) {
-            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Forward, Math.min(wheel_speed + wheel_delta, 255))
-            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Backward, Math.min(Math.abs(wheel_speed - wheel_delta), 255))
-        } else {
-            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Backward, Math.min(Math.abs(wheel_speed + wheel_delta), 255))
-            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Forward, Math.min(wheel_speed - wheel_delta, 255))
-        }
-    }
-}
 function initialize_map () {
     UNKNOWN = "?"
     WALL = "X"
     OPEN = "_"
     BLANK = "" + UNKNOWN + UNKNOWN + UNKNOWN + UNKNOWN
-    map = [[
+    map2 = [[
     BLANK,
     BLANK,
     BLANK,
@@ -170,43 +136,67 @@ function initialize_map () {
     y = 0
     led.plot(x, y)
 }
-function add_wall (walls: string, direction: number) {
-    separate_walls = walls.split("")
-    separate_walls[direction] = WALL
-    return "" + separate_walls[NORTH] + separate_walls[EAST] + separate_walls[SOUTH] + separate_walls[WEST]
-}
-function make_a_turn () {
-    if (test_turns[next_turn] == LEFT || test_turns[next_turn] == RIGHT) {
-        make_a_90_degree_turn(test_turns[next_turn])
+input.onButtonPressed(Button.AB, function () {
+    basic.showString("" + (map2[x][y]))
+    led.plot(x, y)
+})
+radio.onReceivedString(function (receivedString) {
+    if (receivedString.compare("C") == 0) {
+        stop()
+    } else if (receivedString.compare("E") == 0) {
+        go = true
     }
-    next_turn = (next_turn + 1) % test_turns.length
+})
+input.onButtonPressed(Button.B, function () {
+    led.unplot(x, y)
+    y = (y + 1) % 5
+    led.plot(x, y)
+})
+function drive_mostly_straight () {
+    maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Green)
+    error = maqueenPlusV2.readLineSensorData(maqueenPlusV2.MyEnumLineSensor.SensorL1) - maqueenPlusV2.readLineSensorData(maqueenPlusV2.MyEnumLineSensor.SensorR1)
+    wheel_delta = error * Kp
+    if (Math.abs(wheel_delta) < wheel_speed) {
+        maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Forward, (wheel_speed + wheel_delta) * wheel_bias)
+        maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Forward, wheel_speed - wheel_delta)
+    } else {
+        maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Yellow)
+        if (wheel_delta > 0) {
+            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Forward, Math.min(wheel_speed + wheel_delta, 255))
+            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Backward, Math.min(Math.abs(wheel_speed - wheel_delta), 255))
+        } else {
+            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Backward, Math.min(Math.abs(wheel_speed + wheel_delta), 255))
+            maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Forward, Math.min(wheel_speed - wheel_delta, 255))
+        }
+    }
 }
-let separate_walls: string[] = []
+let wheel_delta = 0
+let error = 0
 let opposite_direction: number[] = []
 let BLANK = ""
 let OPEN = ""
-let WALL = ""
 let UNKNOWN = ""
-let wheel_delta = 0
-let error = 0
 let wheel_bias = 0
 let Kp = 0
 let wheel_speed = 0
 let LEFT = 0
-let EAST = 0
-let WEST = 0
-let SOUTH = 0
-let NORTH = 0
-let map: string[][] = []
-let y = 0
-let x = 0
-let go = false
-let spin_speed = 0
 let iterations_to_center_of_line = 0
 let next_turn = 0
 let RIGHT = 0
 let STRAIGHT = 0
 let test_turns: number[] = []
+let y = 0
+let x = 0
+let WALL = ""
+let map2: string[][] = []
+let walls: string[] = []
+let EAST = 0
+let WEST = 0
+let SOUTH = 0
+let NORTH = 0
+let index = 0
+let go = false
+let spin_speed = 0
 let ON = 0
 radio.setGroup(42)
 initialize_constants()
