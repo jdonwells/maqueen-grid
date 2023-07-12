@@ -1,5 +1,5 @@
 {
-    "name": "Maqueen Wall Follower",
+    "name": "Maqueen Maze Solver",
     "description": "",
     "dependencies": {
         "core": "*",
