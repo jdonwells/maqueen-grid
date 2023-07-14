@@ -20,10 +20,6 @@ function change_Y_point () {
     radio_send_coordinates()
 }
 function set_wall_type (the_x: number, the_y: number, the_direction: number, _type: string) {
-    if (debug) {
-        radio.sendString("" + _type + " " + the_x + " " + the_y + " in " + the_direction)
-        basic.pause(3000)
-    }
     walls = map[the_x][the_y].split("")
     walls[the_direction] = _type
     map[the_x][the_y] = "" + walls[NORTH] + walls[EAST] + walls[SOUTH] + walls[WEST]
@@ -91,7 +87,14 @@ function add_a_wall (x_location: number, y_location: number, wall_direction: num
 }
 function initialize_test_turns () {
     next_turn = 0
-    test_turns = [STRAIGHT]
+    test_turns = [
+    STRAIGHT,
+    RIGHT,
+    RIGHT,
+    STRAIGHT,
+    RIGHT,
+    RIGHT
+    ]
 }
 function radio_send_coordinates () {
     radio.sendValue("X", x)
@@ -104,9 +107,16 @@ function center_on_crossroad () {
     }
     maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
     update_coordinates(direction)
+    check_goal()
 }
 function on_line () {
     return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorL1) == ON || (maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorR1) == ON || maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorM) == ON)
+}
+function check_goal () {
+    if (x == goal_x && y == goal_y) {
+        music._playDefaultBackground(music.builtInPlayableMelody(Melodies.PowerUp), music.PlaybackMode.InBackground)
+        stop()
+    }
 }
 function make_a_turn () {
     if (test_turns[next_turn] != STRAIGHT) {
@@ -161,11 +171,6 @@ function initialize_map () {
     EAST
     ]
     set_implied_walls()
-    x = 1
-    y = 0
-    direction = SOUTH
-    radio_send_coordinates()
-    led.plot(x, y)
     delta_x = [
     0,
     1,
@@ -264,35 +269,40 @@ let opposite_direction: number[] = []
 let delta_y: number[] = []
 let delta_x: number[] = []
 let OPEN = ""
-let direction = 0
 let spin_speed = 0
 let LEFT = 0
 let RIGHT = 0
 let WEST = 0
 let SOUTH = 0
-let EAST = 0
 let NORTH = 0
 let map: string[][] = []
 let walls: string[] = []
+let ON = 0
+let goal_y = 0
+let goal_x = 0
+let EAST = 0
+let direction = 0
 let y = 0
 let x = 0
-let ON = 0
-let debug = false
 maqueenPlusV2.I2CInit()
 radio.setGroup(42)
-debug = false
 initialize_constants()
 initialize_map()
 initialize_test_turns()
 stop()
-debug = true
+x = 0
+y = 0
+direction = EAST
+radio_send_coordinates()
+led.plot(x, y)
+goal_x = 0
+goal_y = 0
 basic.forever(function () {
     if (go) {
         if (on_crossroad()) {
             center_on_crossroad()
             radio_show_walls()
             Find_walls()
-            radio_show_walls()
             make_a_turn()
         } else {
             drive_mostly_straight()
