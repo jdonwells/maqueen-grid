@@ -13,19 +13,6 @@ function show_line_sensors () {
 function on_crossroad () {
     return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorL1) == ON && maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorR1) == ON
 }
-function solve_maze () {
-    Find_walls()
-    while (go) {
-        if (on_crossroad()) {
-            center_on_crossroad()
-            Find_walls()
-            make_a_turn()
-        } else {
-            drive_mostly_straight()
-        }
-        basic.pause(1)
-    }
-}
 function change_Y_point () {
     led.unplot(x, y)
     y = (y + 1) % 5
@@ -74,6 +61,7 @@ function look_for_wall (wall_direction: number) {
             make_a_90_degree_turn(0 - wall_direction)
         }
     }
+    basic.pause(1)
 }
 function stop () {
     maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
@@ -102,15 +90,8 @@ input.onButtonPressed(Button.A, function () {
     Change_X_point()
 })
 function initialize_test_turns () {
-    test_turns = [
-    STRAIGHT,
-    RIGHT,
-    RIGHT,
-    STRAIGHT,
-    RIGHT,
-    RIGHT
-    ]
     next_turn = 0
+    test_turns = [STRAIGHT]
 }
 function radio_send_coordinates () {
     radio.sendValue("X", x)
@@ -182,9 +163,9 @@ function initialize_map () {
     EAST
     ]
     set_implied_walls()
-    x = 0
+    x = 1
     y = 0
-    direction = EAST
+    direction = SOUTH
     led.plot(x, y)
     delta_x = [
     0,
@@ -211,7 +192,6 @@ radio.onReceivedString(function (receivedString) {
         stop()
     } else if (receivedString.compare("E") == EQUAL) {
         go = true
-        solve_maze()
     } else if (receivedString.compare("A") == EQUAL) {
         Change_X_point()
     } else if (receivedString.compare("B") == EQUAL) {
@@ -237,6 +217,7 @@ function is_wall_ahead_unknown (wall_direction: number) {
 function Find_walls () {
     look_for_wall(STRAIGHT)
     look_for_wall(LEFT)
+    basic.pause(100)
     look_for_wall(RIGHT)
 }
 function drive_mostly_straight () {
@@ -272,10 +253,11 @@ let wheel_bias = 0
 let Kp = 0
 let wheel_speed = 0
 let iterations_to_center_of_line = 0
-let next_turn = 0
 let test_turns: number[] = []
+let next_turn = 0
 let WALL = ""
 let index = 0
+let go = false
 let STRAIGHT = 0
 let proposed_direction = 0
 let opposite_direction: number[] = []
@@ -294,7 +276,6 @@ let map: string[][] = []
 let walls: string[] = []
 let y = 0
 let x = 0
-let go = false
 let ON = 0
 maqueenPlusV2.I2CInit()
 radio.setGroup(42)
@@ -302,3 +283,17 @@ initialize_constants()
 initialize_map()
 initialize_test_turns()
 stop()
+basic.forever(function () {
+    if (go) {
+        if (on_crossroad()) {
+            center_on_crossroad()
+            basic.pause(100)
+            Find_walls()
+            basic.pause(100)
+            make_a_turn()
+            basic.pause(100)
+        } else {
+            drive_mostly_straight()
+        }
+    }
+})
