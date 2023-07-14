@@ -1,5 +1,5 @@
 {
-    "name": "Maqueen Maze Solver",
+    "name": "Maqueen Grid Maze Solver",
     "description": "",
     "dependencies": {
         "core": "*",

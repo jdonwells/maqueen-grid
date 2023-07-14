@@ -17,9 +17,13 @@ function change_Y_point () {
     led.unplot(x, y)
     y = (y + 1) % 5
     led.plot(x, y)
-    radio.sendValue("Y", y)
+    radio_send_coordinates()
 }
 function set_wall_type (the_x: number, the_y: number, the_direction: number, _type: string) {
+    if (debug) {
+        radio.sendString("" + _type + " " + the_x + " " + the_y + " in " + the_direction)
+        basic.pause(3000)
+    }
     walls = map[the_x][the_y].split("")
     walls[the_direction] = _type
     map[the_x][the_y] = "" + walls[NORTH] + walls[EAST] + walls[SOUTH] + walls[WEST]
@@ -36,7 +40,7 @@ function make_a_90_degree_turn (turn_direction: number) {
     while (on_line()) {
         basic.pause(1)
     }
-    while (!(on_line())) {
+    while (!(center_of_line())) {
         basic.pause(1)
     }
     maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
@@ -46,22 +50,21 @@ function add_a_passage (x_location: number, y_location: number, pass_direction: 
     set_wall_type(x_location, y_location, pass_direction, OPEN)
     set_wall_type(x_location + delta_x[pass_direction], y_location + delta_y[pass_direction], opposite_direction[pass_direction], OPEN)
 }
-function look_for_wall (wall_direction: number) {
-    proposed_direction = direction_after_turn(wall_direction)
+function look_for_wall (wall_turn_direction: number) {
+    proposed_direction = direction_after_turn(wall_turn_direction)
     if (is_wall_ahead_unknown(proposed_direction)) {
-        if (wall_direction != STRAIGHT) {
-            make_a_90_degree_turn(wall_direction)
+        if (wall_turn_direction != STRAIGHT) {
+            make_a_90_degree_turn(wall_turn_direction)
         }
         if (wall_ahead()) {
             add_a_wall(x, y, direction)
         } else {
             add_a_passage(x, y, direction)
         }
-        if (wall_direction != STRAIGHT) {
-            make_a_90_degree_turn(0 - wall_direction)
+        if (wall_turn_direction != STRAIGHT) {
+            make_a_90_degree_turn(0 - wall_turn_direction)
         }
     }
-    basic.pause(1)
 }
 function stop () {
     maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
@@ -86,9 +89,6 @@ function add_a_wall (x_location: number, y_location: number, wall_direction: num
     set_wall_type(x_location, y_location, wall_direction, WALL)
     set_wall_type(x_location + delta_x[wall_direction], y_location + delta_y[wall_direction], opposite_direction[wall_direction], WALL)
 }
-input.onButtonPressed(Button.A, function () {
-    Change_X_point()
-})
 function initialize_test_turns () {
     next_turn = 0
     test_turns = [STRAIGHT]
@@ -103,9 +103,7 @@ function center_on_crossroad () {
         basic.pause(1)
     }
     maqueenPlusV2.controlMotorStop(maqueenPlusV2.MyEnumMotor.AllMotor)
-    x = x + delta_x[direction]
-    y = y + delta_y[direction]
-    radio_send_coordinates()
+    update_coordinates(direction)
 }
 function on_line () {
     return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorL1) == ON || (maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorR1) == ON || maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorM) == ON)
@@ -166,6 +164,7 @@ function initialize_map () {
     x = 1
     y = 0
     direction = SOUTH
+    radio_send_coordinates()
     led.plot(x, y)
     delta_x = [
     0,
@@ -180,13 +179,6 @@ function initialize_map () {
     0
     ]
 }
-function show_walls () {
-    radio.sendString("" + (map[x][y]))
-    led.plot(x, y)
-}
-input.onButtonPressed(Button.AB, function () {
-    show_walls()
-})
 radio.onReceivedString(function (receivedString) {
     if (receivedString.compare("C") == EQUAL) {
         stop()
@@ -197,7 +189,7 @@ radio.onReceivedString(function (receivedString) {
     } else if (receivedString.compare("B") == EQUAL) {
         change_Y_point()
     } else if (receivedString.compare("AB") == EQUAL) {
-        show_walls()
+        radio_show_walls()
     } else if (receivedString.compare("D") == EQUAL) {
         Find_walls()
     }
@@ -206,19 +198,26 @@ function Change_X_point () {
     led.unplot(x, y)
     x = (x + 1) % 3
     led.plot(x, y)
-    radio.sendValue("X", x)
+    radio_send_coordinates()
 }
-input.onButtonPressed(Button.B, function () {
-    change_Y_point()
-})
+function radio_show_walls () {
+    radio.sendString("" + (map[x][y]))
+}
+function center_of_line () {
+    return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorM) == ON
+}
 function is_wall_ahead_unknown (wall_direction: number) {
     return map[x][y].substr(wall_direction, 1).compare(UNKNOWN) == EQUAL
 }
 function Find_walls () {
     look_for_wall(STRAIGHT)
     look_for_wall(LEFT)
-    basic.pause(100)
     look_for_wall(RIGHT)
+}
+function update_coordinates (direction: number) {
+    x = x + delta_x[direction]
+    y = y + delta_y[direction]
+    radio_send_coordinates()
 }
 function drive_mostly_straight () {
     maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Green)
@@ -242,7 +241,8 @@ function direction_after_turn (turn_direction: number) {
     return (direction + (turn_direction + 4)) % 4
 }
 function wall_ahead () {
-    return maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) < 5
+    // 0 distance is infinity
+    return maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) <= 3 && maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) > 0
 }
 let wheel_delta = 0
 let error = 0
@@ -277,21 +277,23 @@ let walls: string[] = []
 let y = 0
 let x = 0
 let ON = 0
+let debug = false
 maqueenPlusV2.I2CInit()
 radio.setGroup(42)
+debug = false
 initialize_constants()
 initialize_map()
 initialize_test_turns()
 stop()
+debug = true
 basic.forever(function () {
     if (go) {
         if (on_crossroad()) {
             center_on_crossroad()
-            basic.pause(100)
+            radio_show_walls()
             Find_walls()
-            basic.pause(100)
+            radio_show_walls()
             make_a_turn()
-            basic.pause(100)
         } else {
             drive_mostly_straight()
         }
