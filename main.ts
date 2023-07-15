@@ -14,13 +14,10 @@ function on_crossroad () {
     return maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorL1) == ON && maqueenPlusV2.readLineSensorState(maqueenPlusV2.MyEnumLineSensor.SensorR1) == ON
 }
 function change_Y_point () {
-    led.unplot(x, y)
     y = (y + 1) % 5
-    led.plot(x, y)
     radio_send_coordinates()
 }
 function set_wall_type (the_x: number, the_y: number, the_direction: number, _type: string) {
-    radio_change_the_map(the_x, the_y, the_direction, _type)
     walls = map[the_x][the_y].split("")
     if (!(walls[the_direction].compare(UNKNOWN) == EQUAL)) {
         radio_change_the_map(the_x, the_y, the_direction, _type)
@@ -61,13 +58,9 @@ function look_for_wall (wall_turn_direction: number) {
             make_a_90_degree_turn(wall_turn_direction)
         }
         if (wall_ahead()) {
-            radio.sendString("wall " + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
             add_a_wall(x, y, direction)
-            basic.pause(1000)
         } else {
-            radio.sendString("Open" + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
             add_a_passage(x, y, direction)
-            basic.pause(1000)
         }
         if (wall_turn_direction != STRAIGHT) {
             make_a_90_degree_turn(0 - wall_turn_direction)
@@ -132,6 +125,12 @@ function check_goal () {
     if (x == goal_x && y == goal_y) {
         music._playDefaultBackground(music.builtInPlayableMelody(Melodies.PowerUp), music.PlaybackMode.InBackground)
         stop()
+        for (let index2 = 0; index2 < 5; index2++) {
+            maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Blue)
+            basic.pause(100)
+            maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Red)
+            basic.pause(100)
+        }
     }
 }
 function radio_change_the_map (change_x: number, change_y: number, change_direction: number, change_type: string) {
@@ -218,6 +217,10 @@ function initialize_map () {
     ]
     set_implied_walls()
 }
+function Change_X_point () {
+    x = (x + 1) % 3
+    radio_send_coordinates()
+}
 radio.onReceivedString(function (receivedString) {
     if (receivedString.compare("C") == EQUAL) {
         stop()
@@ -233,12 +236,6 @@ radio.onReceivedString(function (receivedString) {
         Find_walls()
     }
 })
-function Change_X_point () {
-    led.unplot(x, y)
-    x = (x + 1) % 3
-    led.plot(x, y)
-    radio_send_coordinates()
-}
 function radio_show_walls () {
     radio.sendString("" + (map[x][y]))
 }
@@ -329,18 +326,20 @@ x = 0
 y = 0
 direction = EAST
 radio_send_coordinates()
-led.plot(x, y)
-goal_x = 0
-goal_y = 0
+goal_x = 2
+goal_y = 4
 debug = true
 basic.forever(function () {
     if (go) {
         if (on_crossroad()) {
             center_on_crossroad()
-            Find_walls()
-            left_hand_algorithm()
+            if (go) {
+                Find_walls()
+                left_hand_algorithm()
+            }
         } else {
             drive_mostly_straight()
         }
     }
+    show_line_sensors()
 })
