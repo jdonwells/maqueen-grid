@@ -58,8 +58,10 @@ function look_for_wall (wall_turn_direction: number) {
             make_a_90_degree_turn(wall_turn_direction)
         }
         if (wall_ahead()) {
+            radio.sendString("wall " + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
             add_a_wall(x, y, direction)
         } else {
+            radio.sendString("open " + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
             add_a_passage(x, y, direction)
         }
         if (wall_turn_direction != STRAIGHT) {
