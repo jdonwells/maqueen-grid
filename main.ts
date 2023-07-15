@@ -140,21 +140,41 @@ function initialize_constants () {
     EQUAL = 0
 }
 function left_hand_algorithm () {
-    look_for_wall(LEFT)
-    if (can_go(STRAIGHT)) {
-        return
+    if (is_wall_ahead_unknown(direction_after_turn(LEFT))) {
+        look_for_wall(LEFT)
+        if (can_go(STRAIGHT)) {
+            return
+        } else {
+            make_a_90_degree_turn(RIGHT)
+        }
     } else {
-        make_a_90_degree_turn(RIGHT)
+        if (can_go(LEFT)) {
+            make_a_90_degree_turn(LEFT)
+            return
+        }
     }
     look_for_wall(STRAIGHT)
     if (can_go(STRAIGHT)) {
         return
     }
-    look_for_wall(RIGHT)
-    if (can_go(STRAIGHT)) {
-        return
+    if (is_wall_ahead_unknown(direction_after_turn(RIGHT))) {
+        look_for_wall(RIGHT)
+        if (can_go(STRAIGHT)) {
+            return
+        } else {
+            make_a_90_degree_turn(RIGHT)
+            return
+        }
+    } else {
+        if (can_go(RIGHT)) {
+            make_a_90_degree_turn(RIGHT)
+            return
+        } else {
+            make_a_90_degree_turn(RIGHT)
+            make_a_90_degree_turn(RIGHT)
+            return
+        }
     }
-    make_a_90_degree_turn(RIGHT)
 }
 function initialize_map () {
     UNKNOWN = "?"
