@@ -20,19 +20,27 @@ function change_Y_point () {
     radio_send_coordinates()
 }
 function set_wall_type (the_x: number, the_y: number, the_direction: number, _type: string) {
+    radio_change_the_map(the_x, the_y, the_direction, _type)
     walls = map[the_x][the_y].split("")
+    if (!(walls[the_direction].compare(UNKNOWN) == EQUAL)) {
+        radio_change_the_map(the_x, the_y, the_direction, _type)
+        stop()
+        basic.pause(10000)
+    }
     walls[the_direction] = _type
     map[the_x][the_y] = "" + walls[NORTH] + walls[EAST] + walls[SOUTH] + walls[WEST]
 }
 function make_a_90_degree_turn (turn_direction: number) {
-    maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Yellow)
     if (turn_direction == RIGHT) {
         maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Forward, spin_speed)
         maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Backward, spin_speed)
     } else if (turn_direction == LEFT) {
         maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.LeftMotor, maqueenPlusV2.MyEnumDir.Backward, spin_speed)
         maqueenPlusV2.controlMotor(maqueenPlusV2.MyEnumMotor.RightMotor, maqueenPlusV2.MyEnumDir.Forward, spin_speed)
+    } else {
+        return
     }
+    maqueenPlusV2.showColor(maqueenPlusV2.NeoPixelColors.Yellow)
     while (on_line()) {
         basic.pause(1)
     }
@@ -53,9 +61,13 @@ function look_for_wall (wall_turn_direction: number) {
             make_a_90_degree_turn(wall_turn_direction)
         }
         if (wall_ahead()) {
+            radio.sendString("wall " + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
             add_a_wall(x, y, direction)
+            basic.pause(1000)
         } else {
+            radio.sendString("Open" + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
             add_a_passage(x, y, direction)
+            basic.pause(1000)
         }
         if (wall_turn_direction != STRAIGHT) {
             make_a_90_degree_turn(0 - wall_turn_direction)
@@ -70,14 +82,14 @@ function stop () {
 function set_implied_walls () {
     index = 0
     for (let index2 = 0; index2 < 3; index2++) {
-        add_a_wall(index, 0, NORTH)
-        add_a_wall(index, 4, SOUTH)
+        set_wall_type(index, 0, NORTH, WALL)
+        set_wall_type(index, 4, SOUTH, WALL)
         index += 1
     }
     index = 0
     for (let index2 = 0; index2 < 5; index2++) {
-        add_a_wall(0, index, WEST)
-        add_a_wall(2, index, EAST)
+        set_wall_type(0, index, WEST, WALL)
+        set_wall_type(2, index, EAST, WALL)
         index += 1
     }
 }
@@ -95,6 +107,10 @@ function initialize_test_turns () {
     RIGHT,
     RIGHT
     ]
+}
+function can_go (turn_direction: number) {
+    proposed_direction = direction_after_turn(turn_direction)
+    return map[x][y].substr(proposed_direction, 1).compare(OPEN) == EQUAL
 }
 function radio_send_coordinates () {
     radio.sendValue("X", x)
@@ -118,6 +134,12 @@ function check_goal () {
         stop()
     }
 }
+function radio_change_the_map (change_x: number, change_y: number, change_direction: number, change_type: string) {
+    if (debug) {
+        radio.sendString("" + change_type + " " + change_x + " " + change_y + " " + change_direction)
+        basic.pause(3000)
+    }
+}
 function make_a_turn () {
     if (test_turns[next_turn] != STRAIGHT) {
         make_a_90_degree_turn(test_turns[next_turn])
@@ -135,6 +157,18 @@ function initialize_constants () {
     wheel_bias = 1.05
     iterations_to_center_of_line = 66
     EQUAL = 0
+}
+function left_hand_algorithm () {
+    if (can_go(LEFT)) {
+        make_a_90_degree_turn(LEFT)
+    } else if (can_go(STRAIGHT)) {
+    	
+    } else if (can_go(RIGHT)) {
+        make_a_90_degree_turn(RIGHT)
+    } else {
+        make_a_90_degree_turn(RIGHT)
+        make_a_90_degree_turn(RIGHT)
+    }
 }
 function initialize_map () {
     UNKNOWN = "?"
@@ -170,7 +204,6 @@ function initialize_map () {
     NORTH,
     EAST
     ]
-    set_implied_walls()
     delta_x = [
     0,
     1,
@@ -183,6 +216,7 @@ function initialize_map () {
     1,
     0
     ]
+    set_implied_walls()
 }
 radio.onReceivedString(function (receivedString) {
     if (receivedString.compare("C") == EQUAL) {
@@ -247,13 +281,11 @@ function direction_after_turn (turn_direction: number) {
 }
 function wall_ahead () {
     // 0 distance is infinity
-    return maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) <= 3 && maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) > 0
+    return maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) <= 4 && maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) > 0
 }
 let wheel_delta = 0
 let error = 0
 let BLANK = ""
-let UNKNOWN = ""
-let EQUAL = 0
 let wheel_bias = 0
 let Kp = 0
 let wheel_speed = 0
@@ -275,6 +307,8 @@ let RIGHT = 0
 let WEST = 0
 let SOUTH = 0
 let NORTH = 0
+let EQUAL = 0
+let UNKNOWN = ""
 let map: string[][] = []
 let walls: string[] = []
 let ON = 0
@@ -284,11 +318,12 @@ let EAST = 0
 let direction = 0
 let y = 0
 let x = 0
+let debug = false
 maqueenPlusV2.I2CInit()
 radio.setGroup(42)
+debug = false
 initialize_constants()
 initialize_map()
-initialize_test_turns()
 stop()
 x = 0
 y = 0
@@ -297,13 +332,13 @@ radio_send_coordinates()
 led.plot(x, y)
 goal_x = 0
 goal_y = 0
+debug = true
 basic.forever(function () {
     if (go) {
         if (on_crossroad()) {
             center_on_crossroad()
-            radio_show_walls()
             Find_walls()
-            make_a_turn()
+            left_hand_algorithm()
         } else {
             drive_mostly_straight()
         }
