@@ -58,10 +58,10 @@ function look_for_wall (wall_turn_direction: number) {
             make_a_90_degree_turn(wall_turn_direction)
         }
         if (wall_ahead()) {
-            radio.sendString("wall " + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
+            radio.sendString("wall " + rangefinder)
             add_a_wall(x, y, direction)
         } else {
-            radio.sendString("open " + maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14))
+            radio.sendString("open " + rangefinder)
             add_a_passage(x, y, direction)
         }
     }
@@ -159,20 +159,15 @@ function left_hand_algorithm () {
     }
     if (is_wall_ahead_unknown(direction_after_turn(RIGHT))) {
         look_for_wall(RIGHT)
-        if (can_go(STRAIGHT)) {
-            return
-        } else {
+        if (!(can_go(STRAIGHT))) {
             make_a_90_degree_turn(RIGHT)
-            return
         }
     } else {
         if (can_go(RIGHT)) {
             make_a_90_degree_turn(RIGHT)
-            return
         } else {
             make_a_90_degree_turn(RIGHT)
             make_a_90_degree_turn(RIGHT)
-            return
         }
     }
 }
@@ -232,7 +227,7 @@ radio.onReceivedString(function (receivedString) {
     if (receivedString.compare("C") == EQUAL) {
         stop()
     } else if (receivedString.compare("E") == EQUAL) {
-        go = true
+        start()
     } else if (receivedString.compare("A") == EQUAL) {
         Change_X_point()
     } else if (receivedString.compare("B") == EQUAL) {
@@ -275,12 +270,17 @@ function drive_mostly_straight () {
         }
     }
 }
+function start () {
+    left_hand_algorithm()
+    go = true
+}
 function direction_after_turn (turn_direction: number) {
     return (direction + (turn_direction + 4)) % 4
 }
 function wall_ahead () {
+    rangefinder = maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14)
     // 0 distance is infinity
-    return maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) <= 4 && maqueenPlusV2.readUltrasonic(DigitalPin.P13, DigitalPin.P14) > 0
+    return rangefinder <= 4 && rangefinder > 0
 }
 let wheel_delta = 0
 let error = 0
@@ -292,6 +292,7 @@ let iterations_to_center_of_line = 0
 let WALL = ""
 let index = 0
 let go = false
+let rangefinder = 0
 let STRAIGHT = 0
 let proposed_direction = 0
 let opposite_direction: number[] = []
