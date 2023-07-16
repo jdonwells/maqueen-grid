@@ -19,11 +19,6 @@ function change_Y_point () {
 }
 function set_wall_type (the_x: number, the_y: number, the_direction: number, _type: string) {
     walls = map[the_x][the_y].split("")
-    if (!(walls[the_direction].compare(UNKNOWN) == EQUAL)) {
-        radio_change_the_map(the_x, the_y, the_direction, _type)
-        stop()
-        basic.pause(10000)
-    }
     walls[the_direction] = _type
     map[the_x][the_y] = "" + walls[NORTH] + walls[EAST] + walls[SOUTH] + walls[WEST]
 }
@@ -58,10 +53,8 @@ function look_for_wall (wall_turn_direction: number) {
             make_a_90_degree_turn(wall_turn_direction)
         }
         if (wall_ahead()) {
-            radio.sendString("wall " + rangefinder)
             add_a_wall(x, y, direction)
         } else {
-            radio.sendString("open " + rangefinder)
             add_a_passage(x, y, direction)
         }
     }
@@ -122,6 +115,7 @@ function check_goal () {
     }
 }
 function radio_change_the_map (change_x: number, change_y: number, change_direction: number, change_type: string) {
+    let debug = 0
     if (debug) {
         radio.sendString("" + change_type + " " + change_x + " " + change_y + " " + change_direction)
         basic.pause(3000)
@@ -282,17 +276,19 @@ function wall_ahead () {
     // 0 distance is infinity
     return rangefinder <= 4 && rangefinder > 0
 }
+let rangefinder = 0
 let wheel_delta = 0
 let error = 0
 let BLANK = ""
+let UNKNOWN = ""
 let wheel_bias = 0
 let Kp = 0
 let wheel_speed = 0
 let iterations_to_center_of_line = 0
+let EQUAL = 0
 let WALL = ""
 let index = 0
 let go = false
-let rangefinder = 0
 let STRAIGHT = 0
 let proposed_direction = 0
 let opposite_direction: number[] = []
@@ -305,8 +301,6 @@ let RIGHT = 0
 let WEST = 0
 let SOUTH = 0
 let NORTH = 0
-let EQUAL = 0
-let UNKNOWN = ""
 let map: string[][] = []
 let walls: string[] = []
 let ON = 0
@@ -316,10 +310,8 @@ let EAST = 0
 let direction = 0
 let y = 0
 let x = 0
-let debug = false
 maqueenPlusV2.I2CInit()
 radio.setGroup(42)
-debug = false
 initialize_constants()
 initialize_map()
 stop()
@@ -329,7 +321,6 @@ direction = EAST
 radio_send_coordinates()
 goal_x = 2
 goal_y = 4
-debug = true
 basic.forever(function () {
     if (go) {
         if (on_crossroad()) {
